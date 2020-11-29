@@ -1,7 +1,7 @@
 /**
  * Objeto simples (POJO) para guardar informaçōes de clientes nos testes
  * POJO - Plain Old Java Object - é uma classe simples com atributos, getters and setters.
- */
+ **/
 
 public class Cliente {
     private String nome;
