@@ -1,23 +1,19 @@
 import io.restassured.http.ContentType;
-import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
 
 public class TesteApiCliente {
 
     //URIs utilizadas.
-    String servicoCliente = "http://localhost:8080";
-    String endpointCliente = "/cliente";
-
-    //Dados para cadastro
-    String clienteParaCadastrar = " { \n" +
-            "    \"nome\": \"Taina Mendes\",\n" +
-            "    \"idade\": 33, \n" +
-            "    \"id\": \"1987\" \n" +
-            "}";
+    private String servicoCliente = "http://localhost:8080";
+    private String endpointCliente = "/cliente";
+    private String endpointApagaTodosClientes ="/apagaTodos";
+    private static final String listaClientesVazia ="{}";
 
     @Test
     @DisplayName("Quando consultar a lista de clientes sem cadastrar nenhum. Então na resposta não deve retornar nenhum cliente cadastrado")
@@ -28,33 +24,44 @@ public class TesteApiCliente {
         //GET todos os Clientes e verifica a lista vazia.
         given()
                 .contentType(ContentType.JSON)
-                .when()
+        .when()
                 .get(servicoCliente)
-                .then()
+        .then()
                 .statusCode(200)
-                .body(new IsEqual("{}"));
+                .body(equalTo(listaClientesVazia));
 
     }
 
     @Test
     @DisplayName("Quando cadastrar um cliente. Então na resposta deve retornar os dados do cliente cadastrado.")
     public void cadastraCliente() {
+        //limpardados
+        apagarTodosClientes();
+
+        // Resposta esperada
+        String respostaEsperada = "{\"1987\":{\"nome\":\"Taina Mendes\",\"idade\":33,\"id\":1987,\"risco\":0}}";
+
+        Cliente clienteParaCadastrar = new Cliente();
+
+        /**
+         * Os dados para cadastros foram substituidos por um objeto e são serializados para serem enviados para API.
+         * O restAssured usa o Jackson implicitamente para essa serialização.
+         */
+
+        clienteParaCadastrar.setNome("Taina Mendes");
+        clienteParaCadastrar.setIdade(33);
+        clienteParaCadastrar.setId(1987);
 
         //POST Cadastrar um cliente
         given()
                 .contentType(ContentType.JSON)
                 .body(clienteParaCadastrar)
-                .when()
+        .when()
                 .post(servicoCliente + endpointCliente)
-                .then()
+        .then()
                 .statusCode(201)
-                .body("1987.nome", equalTo("Taina Mendes"))
-                .body("1987.idade", equalTo(33))
-                .body("1987.id", equalTo(1987))
-                .body("1987.risco", equalTo(0));
-
-        //limpardados
-        apagarTodosClientes();
+                .body(equalTo(respostaEsperada));
+                //verificando a resposta inteira que está como String e fazemos o match dela inteira
 
     }
 
@@ -62,30 +69,36 @@ public class TesteApiCliente {
     @DisplayName("Quando atualizar os dados do cliente. Então na resposta deve retornar os dados do cliente atualizado.")
     public void atualizarDadosCliente(){
 
-        String clienteParaAtualizar = " { \n" +
-                "    \"nome\": \"Taina Oliveira\",\n" +
-                "    \"idade\": 34, \n" +
-                "    \"id\": \"1987\" \n" +
-                "}";
+        Cliente clienteParaCadastrar = new Cliente ();
+
+        clienteParaCadastrar.setNome("Lisa");
+        clienteParaCadastrar.setIdade(10);
+        clienteParaCadastrar.setId(1987);
+
+        Cliente clienteParaAtualizar = new Cliente();
+        clienteParaAtualizar.setNome("Lisa Marie Simpson");
+        clienteParaAtualizar.setIdade(8);
+        clienteParaAtualizar.setId(1987);
 
         //criar cadastro
         given()
                 .contentType(ContentType.JSON)
-                .body(clienteParaCadastrar)
+        .body(clienteParaCadastrar)
                 .when()
-                .post(servicoCliente + endpointCliente);
+        .post(servicoCliente + endpointCliente);
 
         //atualizar dados
         given()
                 .contentType(ContentType.JSON)
-                .body(clienteParaAtualizar)
+        .body(clienteParaAtualizar)
                 .when()
                 .put(servicoCliente + endpointCliente)
-                .then()
+        .then()
                 .statusCode(200)
-                .body("1987.nome", equalTo("Taina Oliveira"))
-                .body("1987.idade", equalTo(34));
-
+                .body("1987.id", equalTo(1987))
+                .body("1987.nome", equalTo("Lisa Marie Simpson"))
+                .body("1987.idade", equalTo(8));
+                //verificando elemento por elemento do Json da resposta.
         //limpardados
         apagarTodosClientes();
     }
@@ -94,63 +107,76 @@ public class TesteApiCliente {
     @DisplayName("Quando pesquisar um cliente por ID. Então na resposta deve retornar os dados desse cliente específico.")
     public void consultarClientePorID(){
 
+        Cliente clienteParaCadastrar = new Cliente ();
+
+        clienteParaCadastrar.setNome("Marge Simpson");
+        clienteParaCadastrar.setIdade(38);
+        clienteParaCadastrar.setId(1987);
+
         //criar cadastro
         given()
                 .contentType(ContentType.JSON)
-                .body(clienteParaCadastrar)
+        .body(clienteParaCadastrar)
                 .when()
-                .post(servicoCliente + endpointCliente);
+        .post(servicoCliente + endpointCliente);
 
         //buscar cliente por id
         given()
                 .contentType(ContentType.JSON)
-
-                .when()
-                .get(servicoCliente + endpointCliente +"/1987")
-                .then()
+        .when()
+                .get(servicoCliente + endpointCliente +"/" + clienteParaCadastrar.getId())
+        .then()
                 .statusCode(200)
-                .body("nome", equalTo("Taina Mendes"))
-                .body("idade", equalTo(33))
+                .body("nome", equalTo("Marge Simpson"))
+                .body("idade", equalTo(38))
                 .body("id", equalTo(1987))
                 .body("risco", equalTo(0));
+
+        //limpardados
+        apagarTodosClientes();
     }
 
     @Test
     @DisplayName("Quando apagar um cliente. Então seus dados devem ser removidos com sucesso.")
     public void deletarClientePorID(){
 
+        Cliente clienteParaCadastrar = new Cliente ();
+
+        clienteParaCadastrar.setNome("Maggie Simpson");
+        clienteParaCadastrar.setIdade(1);
+        clienteParaCadastrar.setId(1987);
+
         //criar cadastro
         given()
                 .contentType(ContentType.JSON)
                 .body(clienteParaCadastrar)
-                .when()
+        .when()
                 .post(servicoCliente + endpointCliente);
 
         //apagar cliente
         given()
                 .contentType(ContentType.JSON)
 
-                .when()
-                .delete(servicoCliente + endpointCliente+"/1987")
-                .then()
+        .when()
+                .delete(servicoCliente + endpointCliente+"/"+ clienteParaCadastrar.getId())
+        .then()
                 .statusCode(200)
-                .body(equalTo("CLIENTE REMOVIDO: { NOME: Taina Mendes, IDADE: 33, ID: 1987 }"));
+               .body(equalTo("CLIENTE REMOVIDO: { NOME: Maggie Simpson, IDADE: 1, ID: 1987 }"))
+               .assertThat().body(not(contains("Maggie Simpson")));
     }
 
-
-    @Test
-    @DisplayName("Quando apagar todos os clientes. Então na resposta não retornar nenhum cliente.")
+    /** Método de apoio para apagar todos os clientes do servidor.
+     * Usado apenas para testes.
+     **/
     public void apagarTodosClientes() {
-        String endpointApagarTodos = "/cliente/apagaTodos";
-
         //deletar dados
         given()
                 .contentType(ContentType.JSON)
-                .when()
-                .delete(servicoCliente + endpointApagarTodos)
-                .then()
+        .when()
+                .delete(servicoCliente + endpointCliente + endpointApagaTodosClientes)
+        .then()
                 .statusCode(200)
-                .body(new IsEqual("{}"));
+                .body(equalTo(listaClientesVazia));
     }
 
 }
